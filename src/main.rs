@@ -11,6 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     const BUFFER_SIZE: usize = 128 * 1024 * 1024;
     let mut buf = Vec::with_capacity(BUFFER_SIZE);
     buf.resize(BUFFER_SIZE, 0u8);
+    let mut buf = buf.into_boxed_slice();
     fill_with_xor_prng(buf.as_mut());
 
     let shared = Arc::new(buf);
@@ -27,8 +28,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let elapsed = started_at.elapsed();
 
-    println!("wrote {} bytes in {:?} - {:02}Mbps", n, elapsed, n as f64 / elapsed.as_secs_f64() / 1024.0 / 1024.0);
+
+    println!("wrote {} bytes in {:?} - {:.2}Mbps", n, elapsed, n as f64 / elapsed.as_secs_f64() / 1024.0 / 1024.0);
     // Close the file
+    file.close().await?;
+
+    let started_at = Instant::now();
+    const REWRITES: usize = 10;
+    for _ in 0..REWRITES {
+        rewrite_file(buf.clone()).await?;
+    }
+    let elapsed = started_at.elapsed();
+    println!("{} rewrites took {:?} - {:.2}Mbps", REWRITES, elapsed, n as f64 / elapsed.as_secs_f64() / 1024.0 / 1024.0 * REWRITES as f64);
+
+    Ok(())
+}
+
+async fn rewrite_file(buf: Arc<Box<[u8]>>) -> Result<(), Box<dyn std::error::Error>> {
+
+    let file = File::create("bff-monoio.dat").await?;
+
+    let (res, buf) = file.write_at(buf, 0).await;
+    let n = res?;
+    assert_eq!(n, buf.len());
+
+    file.sync_all().await?;
     file.close().await?;
 
     Ok(())
