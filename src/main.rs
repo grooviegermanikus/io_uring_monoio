@@ -2,9 +2,15 @@ use std::sync::Arc;
 use std::time::Instant;
 use monoio::buf::IoVecBuf;
 use monoio::fs::File;
+use monoio::utils::detect_uring;
+use log::info;
 
 #[monoio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
+    info!("Detecting io_uring support: {}", detect_uring());
+
     // Open a file
     let file = File::create("bff-monoio.dat").await?;
 
