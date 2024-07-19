@@ -3,6 +3,8 @@ name = "io_uring_monoio"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+
 [dependencies]
 monoio = { version = "0.2.3", features = ["macros", "utils", "iouring"] }
 itertools = "0.13.0"
